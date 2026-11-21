@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>发布前闸门 · 中文写作 AI 味自检</title>
+<style>
+:root{
+  --bg:#faf9f6; --surface:#ffffff; --ink:#1f1e1c; --muted:#6b6862;
+  --line:#e5e2da; --accent:#8c5a3c; --accent-soft:#f3ebe3;
+  --warn:#9a5b2f; --warn-soft:#fbf0e4; --ok:#3f6b4f; --ok-soft:#eaf2ec;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",serif;
+  line-height:1.7;-webkit-font-smoothing:antialiased}
+.wrap{max-width:820px;margin:0 auto;padding:56px 24px 80px}
+header{margin-bottom:40px}
+h1{font-size:26px;font-weight:600;letter-spacing:.02em;margin:0 0 10px}
+.sub{color:var(--muted);font-size:14px;margin:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:24px;margin-bottom:20px}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px}
+select,textarea{width:100%;border:1px solid var(--line);border-radius:8px;
+  font-family:inherit;font-size:14px;color:var(--ink);background:#fff;outline:none}
+select{padding:10px 12px;margin-bottom:18px}
+textarea{padding:16px;min-height:240px;resize:vertical;line-height:1.8}
+textarea:focus,select:focus{border-color:var(--accent)}
+.row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px}
+button{background:var(--accent);color:#fff;border:0;border-radius:8px;
+  padding:11px 26px;font-size:14px;font-family:inherit;cursor:pointer}
+button:hover{opacity:.9}
+button.ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
+.hint{font-size:12px;color:var(--muted)}
+.result{display:none}
+.summary{padding:16px 18px;border-radius:10px;font-size:15px;margin-bottom:18px}
+.summary.ok{background:var(--ok-soft);color:var(--ok)}
+.summary.warn{background:var(--warn-soft);color:var(--warn)}
+.group{margin-bottom:22px}
+.group h2{font-size:14px;font-weight:600;margin:0 0 10px;color:var(--ink)}
+.item{font-size:13px;padding:9px 12px;border-left:2px solid var(--line);
+  margin-bottom:6px;color:var(--muted);background:#fdfcfa}
+.item b{color:var(--ink);font-weight:600}
+.item .pos{color:var(--accent);font-family:ui-monospace,monospace;font-size:12px;margin-right:8px}
+.clean{font-size:13px;color:var(--ok)}
+footer{margin-top:48px;padding-top:24px;border-top:1px solid var(--line);
+  font-size:12px;color:var(--muted)}
+code{background:var(--accent-soft);padding:1px 5px;border-radius:4px}
+@media(max-width:600px){.wrap{padding:36px 16px 60px}h1{font-size:22px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>发布前闸门</h1>
+  <p class="sub">稿子发出去之前，扫一遍 AI 味和语域串味。文字只在浏览器里检查，不上传、不保存。</p>
+</header>
+
+<div class="card">
+  <label for="profile">检查场景</label>
+  <select id="profile"></select>
+  <label for="input">粘贴稿件</label>
+  <textarea id="input" placeholder="把文章粘在这里，然后点检查…"></textarea>
+  <div class="row">
+    <button id="run">开始检查</button>
+    <button id="clear" class="ghost">清空</button>
+    <span class="hint">纯本地运行，关闭页面内容即消失</span>
+  </div>
+</div>
+
+<div class="card result" id="result"></div>
+
+<footer>
+  <p>检查项：AI 味套话（结论腔、排比、升华、空泛指代）、同族变体正则、场景合规词、语域一致性。全部在浏览器本地完成。</p>
+  <p>命令行版支持选题去重与 DeepSeek 终审，见项目仓库。</p>
+</footer>
+</div>
+
+<script>
+const DATA = {"phrases": ["一个信号再清楚不过", "结论很清晰", "由此可见", "总的来说", "不难发现", "你会闻到", "仿佛在诉说", "见证了", "值得玩味", "耐人寻味", "不言而喻", "反直觉", "不容忽视", "拎了出来", "单拎出来说", "单独拎出来", "值得一提的是", "值得注意的是", "这里划重点", "单独说一下", "拆开看", "拆开来", "掰开", "扒开", "看下来", "有账可算", "算得过来", "账要这么算", "位置往下挪", "撞上一个问题", "把事交给它", "砸下去的东西", "听着不少", "再补两条", "再补", "先看", "更早一点的参照", "真正有说服力的", "最值得记住的", "把这个问题说得最清楚的", "翻译过来就是", "可以作参照", "把它拆成", "这也解释了为什么", "如果这个判断成立", "还有一条容易被忽略", "有两个数字可以看", "这一层", "那一层", "这一面", "那一面", "这一事", "那一事", "这里我要停一下", "首先", "其次", "最后", "综上所述", "总而言之", "换句话说", "不可否认", "众所周知", "事实上", "不仅仅", "更是", "赋能", "抓手", "底层逻辑", "闭环"], "regex": [{"name": "过渡套话·在…背后", "regex": "在[^，。]{0,8}背后"}, {"name": "过渡套话·支撑…的是", "regex": "支撑[^，。]{0,6}的是"}, {"name": "过渡套话·让…成立", "regex": "让[^，。]{0,8}成立"}, {"name": "作者出面手势·变体", "regex": "(值得\\S{1,4}的是|翻译过来就是|换句话说|可以作参照|有\\d+个可以看|对\\S{1,6}来说有\\d+个|真正\\S{1,4}的是)"}, {"name": "动态化代判断·变体", "regex": "(这个词|这场辩论|这份报告|这个判断|这个概念|这条线|这个想法)[，。\\s]*(被\\S{1,6}(接住|停|扛|塞|拽|靠)|停在|接住)"}, {"name": "悬空指代·变体", "regex": "[\\u4e00-\\u9fa5]*?(这一|那一)(层|阶|面|道|条|项|件)"}, {"name": "空泛升华·排比", "regex": "(不仅[^，。]{1,10}，更[^，。]{1,10}|不是[^，。]{1,10}，而是[^，。]{1,10}|从[^，。]{1,8}到[^，。]{1,8}，从[^，。]{1,8}到[^，。]{1,8})"}], "exempt": ["需要说明", "不宜简单解读", "并非", "口径不一", "数据显示", "公开资料显示", "事实并非如此"], "profiles": {"通用": {"label": "通用中文写作", "desc": "只查所有中文写作都适用的 AI 味套话和空泛表达。适合任何人、任何题材。", "hard": [], "register": null}, "公众号": {"label": "公众号写作", "desc": "在通用基础上，加自媒体常见语域检查：快讯体、读书笔记、社会观察之间是否串味。", "hard": [], "register": {"快讯体": ["值得关注", "发布", "模型", "融资", "发布会", "Agent", "API", "日均", "用户"], "经史笔记": ["我读", "卷一", "所谓", "曰", "这几句", "读到这里", "先说一句", "书中"], "社会理论": ["场域", "惯习", "资本", "文明史", "结构", "阶级", "布迪厄", "区分"]}}, "财经房产": {"label": "财经与房产内容", "desc": "在通用基础上，加涉房唱衰、就业民生片面化等合规风险词（硬拦截）。", "hard": ["崩盘", "泡沫", "信仰破灭", "不再值钱", "锁死一辈子", "没人愿意算的账", "用工荒", "唱衰就业"], "register": null}}, "default": "通用"};
+
+const $ = id => document.getElementById(id);
+const profileSel = $('profile');
+
+Object.keys(DATA.profiles).forEach(k => {
+  const o = document.createElement('option');
+  o.value = k;
+  o.textContent = DATA.profiles[k].label + ' — ' + DATA.profiles[k].desc;
+  profileSel.appendChild(o);
+});
+profileSel.value = DATA.default;
+
+function norm(ln){
+  return ln.replace(/^\s{0,3}#{1,6}\s*/, '')
+           .replace(/^\s{0,3}>\s*/, '')
+           .replace(/[*_`]/g, '').trim();
+}
+function isExempt(ln){ return DATA.exempt.some(m => ln.includes(m)); }
+
+function esc(s){
+  return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+function check(){
+  const text = $('input').value;
+  const prof = DATA.profiles[profileSel.value];
+  if(!text.trim()){
+    alert('先粘贴一段稿子');
+    return;
+  }
+  const lines = text.split(/\r?\n/);
+  const phraseHits = [], regexHits = [], hardHits = [];
+
+  lines.forEach((raw, idx) => {
+    const ln = norm(raw);
+    if(!ln || isExempt(ln)) return;
+    DATA.phrases.forEach(w => {
+      if(ln.includes(w)) phraseHits.push({line:idx+1, word:w, ctx:ln.slice(0,48)});
+    });
+    DATA.regex.forEach(r => {
+      let re;
+      try { re = new RegExp(r.regex, 'g'); } catch(e){ return; }
+      let m;
+      while((m = re.exec(ln)) !== null){
+        regexHits.push({line:idx+1, name:r.name, word:m[0].trim().slice(0,30), ctx:ln.slice(0,48)});
+        if(m.index === re.lastIndex) re.lastIndex++;
+      }
+    });
+    (prof.hard || []).forEach(w => {
+      if(ln.includes(w)) hardHits.push({line:idx+1, word:w, ctx:ln.slice(0,48)});
+    });
+  });
+
+  let regInfo = null;
+  if(prof.register){
+    const counts = {};
+    Object.keys(prof.register).forEach(name => {
+      counts[name] = 0;
+      prof.register[name].forEach(w => { counts[name] += (text.match(new RegExp(w,'g')) || []).length; });
+    });
+    const ranked = Object.entries(counts).sort((a,b) => b[1]-a[1]);
+    if(ranked.length && ranked[0][1] >= 3){
+      const main = ranked[0][0];
+      const foreign = ranked.filter(([k,v]) => k !== main && v >= 2);
+      if(foreign.length) regInfo = {main, foreign};
+    }
+  }
+
+  const total = phraseHits.length + regexHits.length;
+  const box = $('result');
+  box.style.display = 'block';
+
+  let html = '';
+  if(hardHits.length){
+    html += '<div class="summary warn"><b>硬拦截 ' + hardHits.length + ' 处</b> — 这一场景下的风险词，建议改掉再发。</div>';
+  } else if(total === 0 && !regInfo){
+    html += '<div class="summary ok"><b>放行</b> — 没有命中任何检查项。</div>';
+  } else {
+    html += '<div class="summary warn"><b>放行，但有 ' + total + ' 处提示</b> — 软提示不拦截，自己判断要不要改。</div>';
+  }
+
+  function group(title, items, fmt){
+    if(!items.length) return '';
+    let s = '<div class="group"><h2>' + title + '（' + items.length + '）</h2>';
+    items.forEach(it => {
+      s += '<div class="item"><span class="pos">第' + it.line + '行</span><b>' + esc(fmt(it)) + '</b><br>' + esc(it.ctx) + '</div>';
+    });
+    return s + '</div>';
+  }
+
+  html += group('合规风险词', hardHits, i => i.word);
+  html += group('AI 味短语', phraseHits, i => i.word);
+  html += group('同族变体', regexHits, i => i.name + '：' + i.word);
+  if(regInfo){
+    html += '<div class="group"><h2>语域一致性</h2><div class="item">主导语域：<b>' + esc(regInfo.main) +
+            '</b>，但混入了 ' + esc(regInfo.foreign.map(([k,v]) => k + '(' + v + ')').join('、')) + '。</div></div>';
+  }
+  if(!phraseHits.length && !regexHits.length && !hardHits.length && !regInfo){
+    html += '<p class="clean">干净，没有需要提示的地方。</p>';
+  }
+  box.innerHTML = html;
+  box.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+$('run').addEventListener('click', check);
+$('clear').addEventListener('click', () => {
+  $('input').value = '';
+  $('result').style.display = 'none';
+});
+</script>
+</body>
+</html>
